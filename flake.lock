@@ -1,0 +1,64 @@
+{
+  "nodes": {
+    "nix-eda": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1794758471,
+        "narHash": "sha256-E+9uVDO7Fj+LNIIYVYEClT+ASNQAIq+C0+A9kYMhnIk=",
+        "owner": "fossi-foundation",
+        "repo": "nix-eda",
+        "rev": "42ace5607f0dd28fe08797a361fdab4e813d070b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fossi-foundation",
+        "ref": "7.20.0",
+        "repo": "nix-eda",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1780734595,
+        "narHash": "sha256-DmTfP92QFYRLOGXlMIE54MAgxSJjDWocl3gRNOu72Os=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "9b696460ac78b5ccfc17c854d8c976f20456e943",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nix-eda": "nix-eda",
+        "tr1um": "tr1um"
+      }
+    },
+    "tr1um": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795058524,
+        "narHash": "sha256-btVtTCOW1BhWF/8yokAVBD+alr5sPI64Qgxm4I9ra3w=",
+        "owner": "OpenSUSI",
+        "repo": "TR-1um",
+        "rev": "2ff6673e4e70507e49af2d0c10d8ec487f2cfbd2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "OpenSUSI",
+        "ref": "dev",
+        "repo": "TR-1um",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
