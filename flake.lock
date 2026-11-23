@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "ishikai": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1794685953,
+        "narHash": "sha256-ZxvsdLNzip1wp/MxKWvLxBBnzTHdQQFHugPQWejrCQg=",
+        "owner": "ishi-kai",
+        "repo": "OpenEDA-PDK_SetupScript",
+        "rev": "fe35590ea964e586ec1c1b0d8219a195947866c6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ishi-kai",
+        "repo": "OpenEDA-PDK_SetupScript",
+        "type": "github"
+      }
+    },
     "nix-eda": {
       "inputs": {
         "nixpkgs": "nixpkgs"
@@ -37,7 +53,12 @@
     },
     "root": {
       "inputs": {
+        "ishikai": "ishikai",
         "nix-eda": "nix-eda",
+        "nixpkgs": [
+          "nix-eda",
+          "nixpkgs"
+        ],
         "tr1um": "tr1um"
       }
     },
