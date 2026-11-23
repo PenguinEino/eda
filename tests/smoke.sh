@@ -80,8 +80,7 @@ EOF
     ngspice -b csio_tb.spice > csio.log 2>&1 || { cat csio.log; exit 1; }
     if grep -qiE "unknown parameter|error" csio.log; then cat csio.log; exit 1; fi
     tech=TR-1um
-    pcell_lib=TR-1um
-    pcell=fet_n
+    pcell_libs="TR-1um"
     ;;
 
   sky130A)
@@ -99,8 +98,7 @@ EOF
       "XMP out in vdd vdd sky130_fd_pr__pfet_01v8 W=2 L=0.15" \
       "XMN out in 0 0 sky130_fd_pr__nfet_01v8 W=1 L=0.15"
     tech=sky130
-    pcell_lib=  # sky130 の PCell は古い gdsfactory が要るので入れていない（README の既知の問題）
-    pcell=
+    pcell_libs="skywater130"
     ;;
 
   gf180mcuD)
@@ -115,8 +113,7 @@ EOF
       "XMP out in vdd vdd pfet_03v3 W=2u L=0.28u" \
       "XMN out in 0 0 nfet_03v3 W=1u L=0.28u"
     tech=gf180mcu
-    pcell_lib=gf180mcu_klayoutapi
-    pcell=nfet
+    pcell_libs="gf180mcu gf180mcu_klayoutapi gf180mcu_sealring"
     ;;
 
   *)
@@ -132,26 +129,40 @@ if [ -f "$pdk/libs.tech/magic/$PDK.magicrc" ]; then
   grep -q "TECH=$PDK" magic.log
 fi
 
-echo "== KLayout: 技術ファイルを読み、PCell でトランジスタを置けるか"
+echo "== KLayout: 技術ファイルを読み、PDK のすべての PCell を既定値で置けるか"
 cat > kl.py <<EOF
 import pya
 techs = pya.Technology.technology_names()
 print("tech:", techs)
 assert "$tech" in techs
-if "$pcell_lib":
-    ly = pya.Layout()
-    top = ly.create_cell("top")
+
+# 上流の不具合で、既定値で置くと終わらない PCell（gdsfactory 版の同名のものは使える）
+known_hang = {("gf180mcu_klayoutapi", "diode_dw2ps"), ("gf180mcu_klayoutapi", "diode_pw2dw")}
+
+libs = {n.strip() for n in "$pcell_libs".split()}
+bad = []
+for libname in sorted(libs):
     # 技術ごとのライブラリは、技術名も渡さないと見つからないことがある
-    lib = pya.Library.library_by_name("$pcell_lib", "$tech") or pya.Library.library_by_name("$pcell_lib")
-    assert lib is not None, "PCell ライブラリ $pcell_lib がない"
-    pcell_id = lib.layout().pcell_id("$pcell")
-    assert pcell_id is not None, "PCell $pcell がない"
-    ci = ly.add_pcell_variant(lib, pcell_id, {})
-    top.insert(pya.CellInstArray(ci, pya.Trans()))
-    print("$pcell_lib/$pcell:", top.bbox())
-    assert not top.bbox().empty(), "PCell $pcell の中身が空"
+    lib = pya.Library.library_by_name(libname, "$tech") or pya.Library.library_by_name(libname)
+    assert lib is not None, f"PCell ライブラリ {libname} がない"
+    names = list(lib.layout().pcell_names())
+    assert names, f"{libname} に PCell がない"
+    ok = 0
+    for n in names:
+        if (libname, n) in known_hang:
+            continue
+        ly = pya.Layout()
+        top = ly.create_cell("top")
+        ci = ly.add_pcell_variant(lib, lib.layout().pcell_id(n), {})
+        top.insert(pya.CellInstArray(ci, pya.Trans()))
+        if top.bbox().empty():
+            bad.append(f"{libname}/{n}")
+        else:
+            ok += 1
+    print(f"{libname}: {ok}/{len(names)} 個の PCell を置けた")
+assert not bad, "中身が空の PCell: " + ", ".join(bad)
 EOF
-with_timeout 120 klayout -zz -r kl.py
+with_timeout 300 klayout -zz -r kl.py
 
 if [ -d "$KLAYOUT_HOME/macros" ] && ls "$KLAYOUT_HOME/macros" | grep -q '_magic_drc.lym'; then
   echo "== ishi-kai の KLayout マクロ"

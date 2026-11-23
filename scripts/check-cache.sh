@@ -18,7 +18,7 @@ echo "手元でビルドされるもの:"
 printf '  %s\n' $built
 
 # このリポジトリが作るもの（中身はスクリプトやリンクだけ）と、ciel で取ってくる PDK
-allowed='^(eda-.*|xschem|magic|xterm|gnome-terminal|eda-xserver|pdk-root|pdk-(sky130|gf180mcu)-[0-9a-f]{7}|ishikai-klayout-.*|spiceinit-.*)$'
+allowed='^(eda-.*|xschem|magic|xterm|klayout|gnome-terminal|eda-xserver|pdk-root|pdk-(sky130|gf180mcu)-[0-9a-f]{7}|klayout-(sky130A|gf180mcuD)|ishikai-klayout-.*|spiceinit-.*)$'
 bad=$(printf '%s\n' $built | grep -vE "$allowed" || true)
 if [ -n "$bad" ]; then
   echo "キャッシュにないため手元でビルドされるもの:" >&2

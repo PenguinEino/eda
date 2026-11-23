@@ -133,6 +133,49 @@
 
           xterm = withX "xterm" "${pkgs.xterm}/bin/xterm" "args=()";
 
+          # gdsfactory 入りの KLayout（sky130・gf180 の PCell が gdsfactory を使う）。
+          # KLayout に組み込まれた Python は KLayout 自身を「Python 本体」だと思っている。
+          # gdsfactory が multiprocessing の後始末用プロセスを起動すると KLayout がもう 1 つ起動して待ち続け、
+          # KLayout が終われなくなる（Linux ではウィンドウが無限に増える。efabless/sky130_klayout_pdk#45）。
+          # 同じ版の本物の Python を教える（macOS の Python が読む環境変数）。
+          klayout = pkgs.writeShellScriptBin "klayout" ''
+            export PYTHONEXECUTABLE=${pkgs.python3}/bin/python3
+            exec ${pkgs.klayout-gdsfactory}/bin/klayout "$@"
+          '';
+
+          # ---- PDK の KLayout 部分（PCell を直したもの）-------------------------------
+
+          # sky130・gf180 の PCell は古い gdsfactory 向けで、そのままだと置くと空のセルになる。
+          # IIC-OSIC-TOOLS（JKU）が当てている修正を、PDK の KLayout 部分のコピーに当てる。
+          # PDK 本体（ciel で取ってハッシュで検証したもの）には手を入れない。patches/iic-osic-tools を参照。
+          klayoutTech = {
+            sky130 = pkgs.runCommand "klayout-sky130A" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+              cp -r ${pdks.sky130}/sky130A/libs.tech/klayout $out
+              chmod -R u+w $out
+              python3 ${./patches/iic-osic-tools/sky130-pcells.py} $out/python/cells
+            '';
+            # gf180 は 171 MB のほとんどが LVS のテスト用データなので、PCell（tech/pymacros）だけをコピーし、
+            # 残りは PDK 本体へのリンクにする。
+            gf180mcu = pkgs.runCommand "klayout-gf180mcuD" { nativeBuildInputs = [ pkgs.patch ]; } ''
+              src=${pdks.gf180mcu}/gf180mcuD/libs.tech/klayout
+              mkdir -p $out/tech
+              for e in "$src"/*; do
+                [ "$(basename "$e")" = tech ] || ln -s "$e" $out/
+              done
+              for e in "$src"/tech/*; do
+                case "$(basename "$e")" in
+                  pymacros) ;;
+                  *.lyt) cp "$e" $out/tech/ ;;
+                  *) ln -s "$e" $out/tech/ ;;
+                esac
+              done
+              cp -r "$src"/tech/pymacros $out/tech/pymacros
+              chmod -R u+w $out/tech/pymacros
+              patch -p1 -d $out/tech/pymacros < ${./patches/iic-osic-tools/gf180mcu-pcells-gdsfactory9.patch}
+              patch -p1 -d $out/tech/pymacros < ${./patches/iic-osic-tools/gf180mcu-efuse.patch}
+            '';
+          };
+
           # ishi-kai のマクロが結果の表示に使う gnome-terminal の代わり
           gnome-terminal = pkgs.writeShellApplication {
             name = "gnome-terminal";
@@ -190,6 +233,7 @@
               pdkName,
               pdkRoot,
               label,
+              klayoutPath ? "${pdkRoot}/${pdkName}/libs.tech/klayout",
               klayoutrc ? null,
               initialTechnology ? null,
               spiceinit ? null,
@@ -204,10 +248,7 @@
                 xterm
                 eda-xserver
                 gnome-terminal
-                # gdsfactory は入れない。sky130 の PCell と gf180 の gdsfactory 版 PCell は
-                # 古い gdsfactory（8.x）向けで、nix-eda の 9.x では置くと空のセルになるため。
-                # gf180 は gdsfactory を使わない KLayout API 版の PCell（gf180mcu_klayoutapi）が使える。
-                pkgs.klayout
+                klayout
                 pkgs.netgen
                 ngspice
                 # GNU sed（ishi-kai のマクロが GNU の書き方で sed -i を使う）
@@ -219,7 +260,7 @@
               shellHook = ''
                 export PDK_ROOT="${pdkRoot}"
                 export PDK="${pdkName}"
-                export KLAYOUT_PATH="${pdkRoot}/${pdkName}/libs.tech/klayout"
+                export KLAYOUT_PATH="${klayoutPath}"
                 export KLAYOUT_HOME="$HOME/.klayout-${pdkName}"
                 mkdir -p "$KLAYOUT_HOME"
               ''
@@ -269,6 +310,7 @@
             # PDK 付属の ngspice 設定（公式の手順ではこれを .spiceinit として使う）
             spiceinit = "${pdks.sky130}/sky130A/libs.tech/ngspice/spinit";
             initialTechnology = "sky130";
+            klayoutPath = "${klayoutTech.sky130}";
             klayoutExtra = ishikaiKlayout.sky130;
           };
 
@@ -277,6 +319,7 @@
             pdkRoot = pdks.gf180mcu;
             label = "gf180mcuD (open_pdks ${shortVersion "gf180mcu"})";
             initialTechnology = "gf180mcu";
+            klayoutPath = "${klayoutTech.gf180mcu}";
             klayoutExtra = ishikaiKlayout.gf180mcu;
             # PDK の KLayout マクロが読む（未設定だと D とみなして警告を出す）
             extraEnv.GF_PDK_OPTION = "D";
