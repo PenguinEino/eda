@@ -51,7 +51,7 @@ Mac で動かすため、結果は xterm で表示します。また、sky130 �
 
 - **ngspice は 45 を使っています。** 47 は TR-1um の容量モデル（`F_CSIO`）を読めません。
 - **sky130・gf180 の KLayout の PCell は、上流のままだと今の gdsfactory で動きません。** [IIC-OSIC-TOOLS](https://github.com/iic-jku/IIC-OSIC-TOOLS) と同じ修正を当てて使えるようにしています（[patches/iic-osic-tools](patches/iic-osic-tools)）。
-- **gf180 の `gf180mcu_klayoutapi` ライブラリの `diode_dw2ps`・`diode_pw2dw` は、置くと KLayout が止まります**（PDK 側の不具合）。`gf180mcu` ライブラリの同じ名前の PCell を使ってください。
+- **gf180 の `gf180mcu_klayoutapi` ライブラリの `diode_dw2ps`・`diode_pw2dw` は置かないでください。** PDK 側の不具合で、KLayout がメモリを際限なく使い続けて止まります（IIC-OSIC-TOOLS でも既知）。`gf180mcu` ライブラリの同じ名前の PCell は正しく動きます。
 - **2025 年のワークショップの例題では、モデルのパスの直しが要ることがあります。** `.include $::LIB/../ip62_models` を `$::LIB/ip62_models` に直してください。
 
 ## 動作確認・更新
