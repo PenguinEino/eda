@@ -1,0 +1,57 @@
+name: update PDKs
+
+# 毎週、次のものを最新にして、3 つの環境のテストが通ったら PR を作る。
+#   - TR-1um の dev ブランチ（flake.lock）
+#   - ishi-kai のセットアップスクリプト（KLayout マクロ、flake.lock）
+#   - sky130・gf180mcu の ciel-releases の最新版（pdks.json）
+on:
+  schedule:
+    - cron: "0 0 * * 1" # 毎週月曜 9:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://nix-cache.fossi-foundation.org
+            extra-trusted-public-keys = nix-cache.fossi-foundation.org:3+K59iFwXqKsL7BNu6Guy0v+uTlwsxYQxjspXzqLYQs=
+      - name: Update
+        id: update
+        run: |
+          summary=$(mktemp)
+          for input in tr1um ishikai; do
+            old=$(jq -r ".nodes.$input.locked.rev" flake.lock)
+            nix flake update "$input"
+            new=$(jq -r ".nodes.$input.locked.rev" flake.lock)
+            if [ "$old" != "$new" ]; then echo "$input ${old:0:7} → ${new:0:7}" >> "$summary"; fi
+          done
+          UPDATE_SUMMARY="$summary" ./scripts/update-pdks.sh
+          if [ -s "$summary" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            { echo "summary<<EOF"; sed 's/^/- /' "$summary"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          fi
+      - name: Smoke test
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          for shell in tr1um sky130 gf180; do
+            ./scripts/check-cache.sh "$shell"
+            nix develop ".#$shell" -c ./tests/smoke.sh
+          done
+      - uses: peter-evans/create-pull-request@v8
+        if: steps.update.outputs.changed == 'true'
+        with:
+          branch: update-pdks
+          commit-message: "PDK などを最新版に更新"
+          title: "PDK などを最新版に更新"
+          body: |
+            ${{ steps.update.outputs.summary }}
+
+            3 つの環境（tr1um・sky130・gf180）のキャッシュ確認とスモークテストは通っています。

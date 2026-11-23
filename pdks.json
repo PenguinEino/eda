@@ -1,0 +1,10 @@
+{
+  "sky130": {
+    "version": "2fdf40d5736413bb321c31418462aefc17b919b8",
+    "hash": "sha256-liLm5//rnAiM8fxIWeCscW6Xucm14PysdGdMnERNk6c="
+  },
+  "gf180mcu": {
+    "version": "2fdf40d5736413bb321c31418462aefc17b919b8",
+    "hash": "sha256-R1if+9SmH+EYTiiCJlFP9UHZh2EsMzaP4cnupTLuUgY="
+  }
+}

@@ -1,109 +1,72 @@
 # opensusi-eda-nix
 
-OpenSUSI TR-1um（OpenSUSI-TR10）でアナログ回路を設計するための環境を、Mac にネイティブで用意します。
-VM は使いません。
+アナログ回路設計の環境（xschem・ngspice・KLayout・magic・netgen）を、VM なしで Mac にネイティブで用意します。
+ツールと PDK の版は固定されるので、誰が入れても同じ環境になります。
 
-- ツールは [nix-eda](https://github.com/fossi-foundation/nix-eda) のビルド済みバイナリを使います。xschem・ngspice・KLayout・magic・netgen が入ります。
-- PDK は [OpenSUSI/TR-1um](https://github.com/OpenSUSI/TR-1um) の `dev` ブランチを使います。
-- バージョンはすべて `flake.lock` で固定されるので、誰が入れても同じ中身になります。
-- X11 の表示に使う XQuartz も Nix から取ってきて、必要なときに自動で起動します。別途インストールする必要はありません。
+| 環境 | PDK |
+|---|---|
+| `tr1um`（既定） | OpenSUSI TR-1um（`dev` ブランチ） |
+| `sky130` | sky130A（ciel の公式ビルド） |
+| `gf180` | gf180mcuD（ciel の公式ビルド） |
 
-## 対応環境
-
-- macOS 14（Sonoma）以降
-- Apple Silicon で動作を確認しています。Intel Mac も対象には入れていますが、試していません。
+macOS 14 以降。Apple Silicon で確認しています。
 
 ## インストール（最初の 1 回だけ）
 
-Nix をインストールします。nix-eda のビルド済みバイナリを使う設定も一緒に入ります。
-
 ```sh
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --extra-conf "
+curl --proto '=https' --tlsv1.2 -fsSL https://artifacts.nixos.org/nix-installer | sh -s -- install --extra-conf "
 extra-substituters = https://nix-cache.fossi-foundation.org
 extra-trusted-public-keys = nix-cache.fossi-foundation.org:3+K59iFwXqKsL7BNu6Guy0v+uTlwsxYQxjspXzqLYQs=
+extra-experimental-features = nix-command flakes
+min-free = 10737418240
+max-free = 32212254720
 "
 ```
 
-インストールが終わったら、ターミナルを開き直してください。
+終わったらターミナルを開き直します。
 
 ## 使い方
 
 ```sh
-nix develop github:PenguinEino/opensusi-eda-nix
+nix develop github:PenguinEino/opensusi-eda-nix          # TR-1um
+nix develop github:PenguinEino/opensusi-eda-nix#sky130   # sky130A
+nix develop github:PenguinEino/opensusi-eda-nix#gf180    # gf180mcuD
 ```
 
-これで TR-1um 用の環境に入ります。あとはいつもどおりコマンドを打つだけです。
+入ったら `xschem`、`klayout -e`、`ngspice`、`magic` をいつもどおり使えます。`exit` で抜けます。
 
-```sh
-xschem          # 回路図（XQuartz が自動で起動します）
-klayout -e      # レイアウト（TR-1um の技術ファイル、PCell、ライブラリが読み込まれた状態）
-ngspice         # シミュレータ
-```
+- 初回は数分かかります（PDK は sky130 が約 0.3 GB、gf180 が約 0.55 GB）。
+- XQuartz は自動で起動します。別に入れる必要はありません。
+- 変わるのはそのターミナルの環境変数だけです。設定ファイルは PDK 付属のものをそのまま読みます。作業フォルダに `xschemrc`・`.magicrc`・`.spiceinit` があればそちらが優先されます。
+- KLayout の設定は PDK ごとに `~/.klayout-<PDK>` に分かれます。
+- 版を固定したいとき（ワークショップなど）は `nix develop github:PenguinEino/opensusi-eda-nix/<タグ>#gf180` のようにします。
 
-`exit` で環境から抜けます。
+### KLayout のメニュー（sky130・gf180）
 
-- 初回はダウンロードに数分かかります。ngspice だけは手元でビルドされるので、さらに 2 分ほどかかります。
-- 2 回目からは一瞬で入れます。
+[ishi-kai](https://github.com/ishi-kai/OpenEDA-PDK_SetupScript) のマクロを入れています。メニューの「sky130 PDK」「gf180mcu PDK」から、magic の DRC・PEX と LVS を実行できます。
 
-### 環境に入ると何が変わるか
-
-そのターミナルの環境変数だけが変わります。ホームフォルダや Mac の設定は変わりません。
-
-| 変数 | 中身 |
-|---|---|
-| `PATH` | xschem・ngspice・klayout・magic・netgen・xterm |
-| `PDK_ROOT`, `PDK` | TR-1um の場所。xschem の `xschemrc` がこれを読みます |
-| `KLAYOUT_PATH` | TR-1um の `libs.tech/klayout`。KLayout がここから技術ファイルを読みます |
-| `KLAYOUT_HOME` | `~/.klayout-TR-1um`。KLayout の設定を PDK ごとに分けます |
-
-### xschem の設定
-
-- 作業フォルダに `xschemrc` があれば、それを使います。
-- なければ TR-1um 付属の `xschemrc` を使います。`~/.xschem/xschemrc` は読みません。
-
-### XQuartz について
-
-`xschem` などの X11 アプリを起動すると、Nix に入っている XQuartz が自動で立ち上がります。
-
-- すでに公式の XQuartz を使っている場合は、そちらを使います。
-- XQuartz を終わらせたいときは、Dock の XQuartz を終了してください。
-- 端末から ngspice の `plot` を使うときは、先に `export DISPLAY=$(eda-xserver)` を実行してください。xschem から起動した場合は不要です。
-
-## 動作確認
-
-```sh
-nix develop github:PenguinEino/opensusi-eda-nix -c bash -c "$(curl -fsSL https://raw.githubusercontent.com/PenguinEino/opensusi-eda-nix/main/tests/smoke.sh)"
-```
-
-リポジトリを clone してあるなら、`nix develop -c ./tests/smoke.sh` でも実行できます。xschem の netlist、ngspice の DC 解析、KLayout への TR-1um の読み込みを確かめます。
-
-## バージョン
-
-| | バージョン |
-|---|---|
-| nix-eda | 7.20.0 |
-| xschem | 3.4.7 |
-| ngspice | 46（理由は下の「既知の問題」を参照） |
-| KLayout | 0.30.13 |
-| magic / netgen | 8.3.693 / 1.5.329 |
-| TR-1um | `dev` ブランチ。コミットは `flake.lock` を参照 |
-
-TR-1um の `dev` は、GitHub Actions が毎週更新の PR を作ります。
-手で更新するときは次のコマンドを実行してから commit します。
-
-```sh
-nix flake update tr1um
-```
+Mac で動かすため、結果は xterm で表示します。また、sky130 の LVS が xschem の netlist（`XM1` 形式）を読めるように設定を 1 行足しています。
 
 ## 既知の問題
 
-- **ngspice 47 は TR-1um の容量モデルを読めません。** `F_CSIO`（`models_IP62_cap_v5p1.lib`）の式で `unknown parameter (e9)` というエラーになります。45 と 46 では読めるので、ngspice は 46 に固定しています。
-- **2025 年のワークショップの例題の多くは、モデルを `.include $::LIB/../ip62_models` で読み込んでいます。** 今の TR-1um ではモデルが `libs.tech/spice/models/ip62_models` にあるため、このパスでは見つかりません。`$::LIB/ip62_models` に直すと動きます。
+- **ngspice は 45 を使っています。** 47 は TR-1um の容量モデル（`F_CSIO`）を読めません。
+- **sky130 の KLayout の PCell は使えません**（古い gdsfactory が必要なため）。トランジスタは magic で作れます。
+- **gf180 の PCell は `gf180mcu_klayoutapi` ライブラリのものを使ってください。**
+- **2025 年のワークショップの例題では、モデルのパスの直しが要ることがあります。** `.include $::LIB/../ip62_models` を `$::LIB/ip62_models` に直してください。
+
+## 動作確認・更新
+
+```sh
+nix develop .#sky130 -c ./tests/smoke.sh    # テスト（tr1um・gf180 も同様）
+nix flake update tr1um ishikai              # TR-1um と ishi-kai のマクロを更新
+./scripts/update-pdks.sh                    # sky130・gf180 を ciel の最新版に更新
+```
+
+GitHub Actions が毎週これらを更新し、テストが通れば PR を作ります。
 
 ## アンインストール
 
 ```sh
 /nix/nix-installer uninstall
+rm -rf ~/.klayout-TR-1um ~/.klayout-sky130A ~/.klayout-gf180mcuD ~/.cache/opensusi-eda
 ```
-
-Nix ごと、すべて消えます。
