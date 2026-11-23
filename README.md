@@ -1,4 +1,4 @@
-# opensusi-eda-nix
+# eda
 
 アナログ回路設計の環境（xschem・ngspice・KLayout・magic・netgen）を、VM なしで Mac にネイティブで用意します。
 ツールと PDK の版は固定されるので、誰が入れても同じ環境になります。
@@ -28,9 +28,9 @@ max-free = 32212254720
 ## 使い方
 
 ```sh
-nix develop github:PenguinEino/opensusi-eda-nix          # TR-1um
-nix develop github:PenguinEino/opensusi-eda-nix#sky130   # sky130A
-nix develop github:PenguinEino/opensusi-eda-nix#gf180    # gf180mcuD
+nix develop github:PenguinEino/eda          # TR-1um
+nix develop github:PenguinEino/eda#sky130   # sky130A
+nix develop github:PenguinEino/eda#gf180    # gf180mcuD
 ```
 
 入ったら `xschem`、`klayout -e`、`ngspice`、`magic` をいつもどおり使えます。`exit` で抜けます。
@@ -39,7 +39,7 @@ nix develop github:PenguinEino/opensusi-eda-nix#gf180    # gf180mcuD
 - XQuartz は自動で起動します。別に入れる必要はありません。
 - 変わるのはそのターミナルの環境変数だけです。設定ファイルは PDK 付属のものをそのまま読みます。作業フォルダに `xschemrc`・`.magicrc`・`.spiceinit` があればそちらが優先されます。
 - KLayout の設定は PDK ごとに `~/.klayout-<PDK>` に分かれます。
-- 版を固定したいとき（ワークショップなど）は `nix develop github:PenguinEino/opensusi-eda-nix/<タグ>#gf180` のようにします。
+- 版を固定したいとき（ワークショップなど）は `nix develop github:PenguinEino/eda/<タグ>#gf180` のようにします。
 
 ### KLayout のメニュー（sky130・gf180）
 
