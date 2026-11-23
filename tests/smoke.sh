@@ -136,7 +136,8 @@ techs = pya.Technology.technology_names()
 print("tech:", techs)
 assert "$tech" in techs
 
-# 上流の不具合で、既定値で置くと終わらない PCell（gdsfactory 版の同名のものは使える）
+# 上流の不具合で、既定値で置くと Cell.flatten の中でメモリを際限なく使い続け、終わらない PCell
+#（gdsfactory 版の同名のものは使える。IIC-OSIC-TOOLS の _tests/27 でも同じ 2 つを除外している）
 known_hang = {("gf180mcu_klayoutapi", "diode_dw2ps"), ("gf180mcu_klayoutapi", "diode_pw2dw")}
 
 libs = {n.strip() for n in "$pcell_libs".split()}
